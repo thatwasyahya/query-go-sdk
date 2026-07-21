@@ -145,6 +145,22 @@ resp, err := client.DoWithRetry(ctx, req, querygo.DefaultRetryPolicy())
 `DefaultRetryPolicy` makes up to 3 attempts with exponential backoff, retrying
 transport errors and the `429`, `502`, `503`, `504` status codes.
 
+## Redirects
+
+QUERY redirects are handled per [RFC 10008 §2.5](https://www.rfc-editor.org/rfc/rfc10008.html#section-2.5),
+which differs from the standard library: `301`, `302`, `307` and `308`
+**re-issue the QUERY** (replaying the body), while only `303` switches to `GET`.
+The Go client alone would downgrade `301`/`302` to `GET` and drop the body,
+which the RFC forbids for QUERY.
+
+```go
+client := querygo.NewClient(nil, querygo.WithMaxRedirects(5))
+```
+
+The limit defaults to `querygo.DefaultMaxRedirects`; exceeding it returns
+`ErrTooManyRedirects`. A `301`/`302`/`307`/`308` whose body cannot be replayed
+(a raw `Body` with no `GetBody`) returns `ErrRedirectBodyNotReplayable`.
+
 ## Serving QUERY
 
 `Handler` implements `http.Handler`. It dispatches QUERY requests, answers

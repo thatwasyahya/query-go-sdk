@@ -7,8 +7,7 @@ import (
 	"net/url"
 )
 
-// MethodQuery is the HTTP QUERY method token defined by the "HTTP QUERY
-// Method" specification (draft-ietf-httpbis-safe-method-w-body). QUERY is a
+// MethodQuery is the HTTP QUERY method token defined by RFC 10008. QUERY is a
 // safe, idempotent request method that carries a request body describing a
 // query to be evaluated against the target resource.
 const MethodQuery = "QUERY"
@@ -31,6 +30,12 @@ type Client struct {
 	// UserAgent, when set, is applied as the User-Agent header field unless a
 	// request already provides one.
 	UserAgent string
+
+	// MaxRedirects caps the number of redirects followed for a QUERY request.
+	// When zero or negative, DefaultMaxRedirects is used. Redirects are handled
+	// per RFC 10008 Section 2.5: 301, 302, 307 and 308 re-issue QUERY (replaying
+	// the body), while 303 switches to GET.
+	MaxRedirects int
 }
 
 // Request describes a single HTTP QUERY request.
@@ -69,6 +74,12 @@ func WithBaseURL(baseURL string) Option {
 // WithUserAgent sets the default User-Agent header field.
 func WithUserAgent(userAgent string) Option {
 	return func(c *Client) { c.UserAgent = userAgent }
+}
+
+// WithMaxRedirects sets the maximum number of redirects followed for a QUERY
+// request. A value of zero or less selects DefaultMaxRedirects.
+func WithMaxRedirects(n int) Option {
+	return func(c *Client) { c.MaxRedirects = n }
 }
 
 // WithDefaultHeader sets header fields applied to every request unless already
@@ -171,7 +182,7 @@ func (c *Client) Do(ctx context.Context, req Request) (*http.Response, error) {
 
 	c.applyDefaults(request)
 
-	return c.httpClient().Do(request)
+	return c.follow(ctx, request, req)
 }
 
 // Query is a convenience wrapper that sends a QUERY request with a body and

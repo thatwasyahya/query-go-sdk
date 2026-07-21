@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- RFC 10008 Section 2.5 redirect handling for QUERY: `301`, `302`, `307` and
+  `308` re-issue QUERY with the body replayed (the standard library would
+  downgrade `301`/`302` to GET and drop the body, which the RFC forbids for
+  QUERY), while `303` switches to GET. Configurable via `Client.MaxRedirects`
+  and `WithMaxRedirects`; adds `DefaultMaxRedirects`, `ErrTooManyRedirects` and
+  `ErrRedirectBodyNotReplayable`.
+
 ## [0.1.0] - 2026-07-21
 
 Initial release: a dependency-free Go SDK for the HTTP QUERY method
