@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-21
+
 ### Added
 
 - RFC 10008 Section 2.5 redirect handling for QUERY: `301`, `302`, `307` and
@@ -43,5 +45,6 @@ Initial release: a dependency-free Go SDK for the HTTP QUERY method
 - **Client options**: `WithBaseURL`, `WithUserAgent`, `WithDefaultHeader`,
   `WithHeader`.
 
-[Unreleased]: https://github.com/thatwasyahya/query-go-sdk/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/thatwasyahya/query-go-sdk/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/thatwasyahya/query-go-sdk/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/thatwasyahya/query-go-sdk/releases/tag/v0.1.0
