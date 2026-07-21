@@ -24,11 +24,11 @@ type Discovery struct {
 	Header http.Header
 }
 
-// AcceptsMediaType reports whether mediaType appears in the advertised
-// Accept-Query list.
+// AcceptsMediaType reports whether mediaType is covered by the advertised
+// Accept-Query media ranges, honoring the "*/*" and "type/*" wildcards.
 func (d Discovery) AcceptsMediaType(mediaType string) bool {
 	for _, item := range d.AcceptQuery {
-		if item == mediaType {
+		if matchMediaRange(item, mediaType) {
 			return true
 		}
 	}
@@ -40,7 +40,7 @@ func (d Discovery) AcceptsMediaType(mediaType string) bool {
 // metadata.
 func DiscoveryFromResponse(resp *http.Response) Discovery {
 	allow := parseHeaderList(resp.Header.Values(HeaderAllow))
-	acceptQuery := parseHeaderList(resp.Header.Values(HeaderAcceptQuery))
+	acceptQuery := parseAcceptQuery(resp.Header.Values(HeaderAcceptQuery))
 
 	supports := len(acceptQuery) > 0
 	for _, method := range allow {

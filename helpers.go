@@ -101,7 +101,7 @@ func ParseResponseInfo(resp *http.Response) ResponseInfo {
 	info := ResponseInfo{StatusCode: resp.StatusCode, Header: resp.Header}
 	info.ContentLocation = resp.Header.Get(HeaderContentLocation)
 	info.Location = resp.Header.Get(HeaderLocation)
-	info.AcceptQuery = parseHeaderList(resp.Header.Values(HeaderAcceptQuery))
+	info.AcceptQuery = parseAcceptQuery(resp.Header.Values(HeaderAcceptQuery))
 	info.Allow = parseHeaderList(resp.Header.Values(HeaderAllow))
 	return info
 }
@@ -116,17 +116,24 @@ func SupportsQuery(resp *http.Response) bool {
 		}
 	}
 
-	return len(parseHeaderList(resp.Header.Values(HeaderAcceptQuery))) > 0
+	return len(parseAcceptQuery(resp.Header.Values(HeaderAcceptQuery))) > 0
 }
 
-// QueryURI returns the URI at which the query result can be retrieved with a
-// GET request, preferring Location over Content-Location.
-func (info ResponseInfo) QueryURI() string {
-	if info.Location != "" {
-		return info.Location
-	}
-
+// ResultURI returns the URI of the resource holding the result of the query
+// that was just performed, as advertised by the Content-Location response field
+// (RFC 10008 Section 2.3). A GET to this URI retrieves that stored result. It
+// is empty when the response carries no such field.
+func (info ResponseInfo) ResultURI() string {
 	return info.ContentLocation
+}
+
+// EquivalentResourceURI returns the URI of the equivalent resource for the
+// query, as advertised by the Location response field (RFC 10008 Section 2.4).
+// A GET to this URI re-runs the same query without resending the content,
+// yielding the current result. It is empty when the response carries no such
+// field.
+func (info ResponseInfo) EquivalentResourceURI() string {
+	return info.Location
 }
 
 // QueryRequest sends a QUERY request built from a Body.

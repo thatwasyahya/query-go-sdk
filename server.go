@@ -49,6 +49,14 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// RFC 10008 Section 2: a server MUST fail the request if the
+		// Content-Type field is missing.
+		if r.Header.Get(HeaderContentType) == "" {
+			h.advertise(w.Header())
+			http.Error(w, "querygo: missing Content-Type", http.StatusBadRequest)
+			return
+		}
+
 		if len(h.AcceptQuery) > 0 && !h.acceptsContentType(r) {
 			h.advertise(w.Header())
 			http.Error(w, "querygo: unsupported query media type", http.StatusUnsupportedMediaType)
@@ -84,7 +92,7 @@ func (h Handler) acceptsContentType(r *http.Request) bool {
 	}
 
 	for _, allowed := range h.AcceptQuery {
-		if strings.EqualFold(allowed, mediaType) {
+		if matchMediaRange(allowed, mediaType) {
 			return true
 		}
 	}
@@ -108,7 +116,7 @@ func (h Handler) allowedMethods() []string {
 
 func (h Handler) advertise(header http.Header) {
 	if len(h.AcceptQuery) > 0 {
-		header.Set(HeaderAcceptQuery, strings.Join(h.AcceptQuery, ", "))
+		header.Set(HeaderAcceptQuery, formatAcceptQuery(h.AcceptQuery))
 	}
 }
 
@@ -126,10 +134,11 @@ func SetResultLocation(header http.Header, uri string) {
 }
 
 // AdvertiseQuery sets the Accept-Query header field on a response, advertising
-// the supported query media types. It can be called from any handler (for
-// example a GET handler) so clients discover QUERY support inline.
+// the supported query media types as a Structured Fields List (RFC 10008
+// Section 3). It can be called from any handler (for example a GET handler) so
+// clients discover QUERY support inline.
 func AdvertiseQuery(header http.Header, mediaTypes ...string) {
 	if len(mediaTypes) > 0 {
-		header.Set(HeaderAcceptQuery, strings.Join(mediaTypes, ", "))
+		header.Set(HeaderAcceptQuery, formatAcceptQuery(mediaTypes))
 	}
 }

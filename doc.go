@@ -1,5 +1,5 @@
-// Package querygo is a small SDK for the HTTP QUERY method
-// (draft-ietf-httpbis-safe-method-w-body).
+// Package querygo is a small, dependency-free SDK for the HTTP QUERY method
+// (RFC 10008).
 //
 // QUERY is a safe, idempotent request method that carries a request body
 // describing a query to be evaluated against the target resource. Unlike GET,
@@ -30,9 +30,11 @@
 //
 // # Result location
 //
-// A QUERY response may advertise the URI of a materialized, GET-retrievable
-// result via the Content-Location (or Location) header field. FetchResult
-// follows it:
+// A QUERY response may advertise two distinct URIs (RFC 10008 Sections 2.3 and
+// 2.4): Content-Location identifies the stored result of the query just run
+// (FetchResult follows it), while Location identifies the equivalent resource
+// whose GET re-runs the query for a current result (FetchEquivalent follows
+// it).
 //
 //	resp, _ := client.QueryJSON(ctx, url, request, querygo.MediaTypeJSON, nil)
 //	result, err := client.FetchResult(ctx, resp, nil)

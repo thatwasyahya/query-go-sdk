@@ -1,7 +1,12 @@
 # querygo
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/thatwasyahya/query-go-sdk.svg)](https://pkg.go.dev/github.com/thatwasyahya/query-go-sdk)
+[![Go Report Card](https://goreportcard.com/badge/github.com/thatwasyahya/query-go-sdk)](https://goreportcard.com/report/github.com/thatwasyahya/query-go-sdk)
+[![CI](https://github.com/thatwasyahya/query-go-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/thatwasyahya/query-go-sdk/actions/workflows/ci.yml)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](LICENSE)
+
 A small, dependency-free Go SDK for the **HTTP `QUERY` method**
-([`draft-ietf-httpbis-safe-method-w-body`](https://datatracker.ietf.org/doc/draft-ietf-httpbis-safe-method-w-body/)).
+([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008.html)).
 
 `QUERY` is a **safe** and **idempotent** request method that carries a request
 body describing a query to run against the target resource. It combines the
@@ -24,7 +29,7 @@ import querygo "github.com/thatwasyahya/query-go-sdk"
 | Build request bodies | `NewBodyString`, `NewBodyBytes`, `NewBodyForm`, `NewBodyJSON` |
 | Decode responses | `ReadBody`, `DecodeText`, `DecodeJSON`, `Client.QueryJSONInto` |
 | Error handling | `CheckStatus`, `StatusError`, `AsStatusError` |
-| Result location | `Client.FetchResult`, `ResponseInfo.QueryURI` |
+| Result / equivalent resource | `Client.FetchResult`, `Client.FetchEquivalent`, `ResponseInfo.ResultURI`, `ResponseInfo.EquivalentResourceURI` |
 | Discovery | `Client.Options`, `Discovery`, `SupportsQuery` |
 | Retries | `Client.DoWithRetry`, `DefaultRetryPolicy`, `RetryOnTransient`, `ExponentialBackoff` |
 | Client options | `WithBaseURL`, `WithUserAgent`, `WithDefaultHeader`, `WithHeader` |
@@ -83,27 +88,43 @@ if err := querygo.DecodeJSON(resp, &out); err != nil {
 `ReadBody`, `DecodeText` and `DecodeJSON` validate the status and always close
 the body.
 
-## Fetching the materialized result
+## Result vs. equivalent resource
 
-A `QUERY` response may point to a cacheable, `GET`-retrievable result resource
-via the `Content-Location` (or `Location`) header field. `FetchResult` follows
-it:
+A `QUERY` response can advertise two **distinct** `GET`-retrievable URIs
+([RFC 10008 §2.3–2.4](https://www.rfc-editor.org/rfc/rfc10008.html#section-2.3)):
+
+- **`Content-Location`** — the *stored result* of the query just run.
+  `FetchResult` follows it.
+- **`Location`** — the *equivalent resource*, whose `GET` **re-runs** the query
+  (without resending the body) for a current result. `FetchEquivalent` follows
+  it.
 
 ```go
 resp, _ := client.QueryJSON(ctx, url, payload, querygo.MediaTypeJSON, nil)
 
+// The result computed for this exact query:
 result, err := client.FetchResult(ctx, resp, nil)
 if errors.Is(err, querygo.ErrNoQueryResult) {
-    // The response carried the result inline instead.
+    // No Content-Location: the result was returned inline.
 }
+
+// Re-run the same query later via a plain GET:
+fresh, err := client.FetchEquivalent(ctx, resp, nil)
 ```
 
 ## Discovering QUERY support
+
+`Accept-Query` is an [RFC 9651](https://www.rfc-editor.org/rfc/rfc9651.html)
+Structured Fields List; the SDK parses and serializes it correctly (quoted
+strings, parameters, `*/*` and `type/*` wildcards).
 
 ```go
 discovery, err := client.Options(ctx, url, nil)
 if discovery.SupportsQuery {
     fmt.Println("accepted query formats:", discovery.AcceptQuery)
+}
+if discovery.AcceptsMediaType(querygo.MediaTypeJSON) {
+    // ...
 }
 ```
 
@@ -144,9 +165,11 @@ mux.Handle("/search", querygo.Handler{
 })
 ```
 
-When `AcceptQuery` is set, requests with an unlisted `Content-Type` are
-rejected with `415 Unsupported Media Type`. Use `AdvertiseQuery` from any
-handler (e.g. a `GET`) to surface QUERY support inline.
+A QUERY request without a `Content-Type` is rejected with `400 Bad Request`
+(RFC 10008 §2). When `AcceptQuery` is set, requests with an unlisted
+`Content-Type` are rejected with `415 Unsupported Media Type` and the server's
+`Accept-Query`. Use `AdvertiseQuery` from any handler (e.g. a `GET`) to surface
+QUERY support inline.
 
 ## Caching
 
@@ -164,3 +187,12 @@ key, _ := querygo.CacheKeyForBody(url, body)
 ```sh
 go test ./... -race -cover
 ```
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Please run
+`make check` (gofmt, vet, build, race tests) before opening a pull request.
+
+## License
+
+[BSD-3-Clause](LICENSE).
